@@ -1,0 +1,59 @@
+import yfinance as yf
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# -------- SETTINGS --------
+ticker = "AAPL"      # change to any stock ticker
+start_date = "2020-01-01"
+end_date = "2025-01-01"
+
+# -------- DOWNLOAD DATA --------
+data = yf.download(ticker, start=start_date, end=end_date)
+
+# -------- CALCULATE INDICATORS --------
+
+# Moving averages
+data["MA50"] = data["Close"].rolling(window=50).mean()
+data["MA200"] = data["Close"].rolling(window=200).mean()
+
+# RSI calculation
+delta = data["Close"].diff()
+
+gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+
+rs = gain / loss
+data["RSI"] = 100 - (100 / (1 + rs))
+
+# -------- TREND SIGNAL --------
+def trend_signal(row):
+    if row["MA50"] > row["MA200"]:
+        return "Bullish"
+    elif row["MA50"] < row["MA200"]:
+        return "Bearish"
+    else:
+        return "Neutral"
+
+data["Trend"] = data.apply(trend_signal, axis=1)
+
+print(data[["Close", "MA50", "MA200", "RSI", "Trend"]].tail())
+
+# -------- PLOT PRICE + MOVING AVERAGES --------
+plt.figure(figsize=(12,6))
+plt.plot(data["Close"], label="Close Price")
+plt.plot(data["MA50"], label="50-day MA")
+plt.plot(data["MA200"], label="200-day MA")
+
+plt.title(f"{ticker} Trend Analysis")
+plt.legend()
+plt.show()
+
+# -------- PLOT RSI --------
+plt.figure(figsize=(12,4))
+plt.plot(data["RSI"], label="RSI")
+plt.axhline(70)
+plt.axhline(30)
+
+plt.title("Relative Strength Index")
+plt.legend()
+plt.show()
